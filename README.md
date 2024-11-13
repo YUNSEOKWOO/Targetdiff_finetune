@@ -1,5 +1,6 @@
 # Targetdiff_finetune
 SARS-COV-2 Mpro inhibitor generation mini project
+<br> This project is a fine-tuned version of [targetdiff](https://github.com/original_author/targetdiff) by Jiaqi Guan.
 
 ## Environments
 ```bash
