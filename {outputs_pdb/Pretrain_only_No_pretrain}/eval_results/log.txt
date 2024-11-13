@@ -1,0 +1,5 @@
+[2024-09-26 14:27:58,603::evaluate::INFO] Load generated data done! 0 examples in total.
+[2024-09-26 14:27:58,604::evaluate::INFO] Evaluate done! 0 samples in total.
+[2024-09-26 14:38:04,936::evaluate::INFO] Load generated data done! 0 examples in total.
+[2024-09-26 14:38:04,938::evaluate::INFO] Evaluate done! 0 samples in total.
+[2024-09-26 14:43:26,055::evaluate::ERROR] File {outputs_pdb/Pretrain_only_No_pretrain}/sample.pt does not exist.

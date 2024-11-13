@@ -73,11 +73,14 @@ class QVinaDockingTask(BaseDockingTask):
     @classmethod
     def from_generated_mol(cls, ligand_rdmol, ligand_filename, protein_root='./data/crossdocked', **kwargs):
         # load original pdb
-        protein_fn = os.path.join(
-            os.path.dirname(ligand_filename),
-            os.path.basename(ligand_filename)[:10] + '.pdb'  # PDBId_Chain_rec.pdb
-        )
-        protein_path = os.path.join(protein_root, protein_fn)
+        if ligand_filename:
+            protein_fn = os.path.join(
+                os.path.dirname(ligand_filename),
+                os.path.basename(ligand_filename)[:10] + '.pdb'  # PDBId_Chain_rec.pdb
+            )
+            protein_path = os.path.join(protein_root, protein_fn)
+        else:
+            protein_path = protein_root        
         with open(protein_path, 'r') as f:
             pdb_block = f.read()
         return cls(pdb_block, ligand_rdmol, **kwargs)

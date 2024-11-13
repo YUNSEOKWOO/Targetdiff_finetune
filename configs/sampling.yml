@@ -1,9 +1,15 @@
 model:
-  checkpoint: ./pretrained_models/pretrained_diffusion.pt
-
+  checkpoint: logs_diffusion/finetune100000_7uup_pocket_2024_09_30/checkpoints/model_iter_50000.pt
+# pretrained_models/pretrained_diffusion.pt (default_no_finetune)
+# logs_diffusion/7L11_iters_10000/checkpoints/model_iter_10000.pt (7l11)
+# logs_diffusion/finetune100000_7uup_pocket_2024_09_30/checkpoints/model_iter_50000.pt (7uup pocket_finetune/이게 성능 good)
+# logs_diffusion/finetune100000_7uup_pocket_2024_09_30/checkpoints/model_iter_100000.pt (7uup pocket_finetune)
+# logs_diffusion/Xpretrain_finetune_training_2024_09_21__18_20_01/checkpoints/model_iter_21000.pt  (No pretrain)
+# logs_diffusion/pre+finetune_training_2024_09_23__17_21_44/checkpoints/model_iter_10000.pt  (Pretrain + Finetune 10000 iters)
+# logs_diffusion/training_2024_09_24__17_55_46/checkpoints/model_iter_32000.pt  (Pretrain + Finetune 32000 iters)
 sample:
   seed: 2021
-  num_samples: 100
+  num_samples: 1000  # 100
   num_steps: 1000
   pos_only: False
   center_pos_mode: protein

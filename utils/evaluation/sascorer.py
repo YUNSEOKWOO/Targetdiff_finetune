@@ -19,8 +19,9 @@ from __future__ import print_function
 
 from rdkit import Chem
 from rdkit.Chem import rdMolDescriptors
-from rdkit.six.moves import cPickle
-from rdkit.six import iteritems
+# from rdkit.six.moves import cPickle
+import pickle as cPickle
+# from rdkit.six import iteritems
 
 import math
 from collections import defaultdict
@@ -60,7 +61,8 @@ def calculateScore(m):
     fps = fp.GetNonzeroElements()
     score1 = 0.
     nf = 0
-    for bitId, v in iteritems(fps):
+    # for bitId, v in iteritems(fps):   #rdkit.six 사용불가에 따른 주석처리
+    for bitId, v in fps.items():
         nf += v
         sfp = bitId
         score1 += _fscores.get(sfp, -4) * v
@@ -176,5 +178,6 @@ if __name__ == '__main__':
 def compute_sa_score(rdmol):
     rdmol = Chem.MolFromSmiles(Chem.MolToSmiles(rdmol))
     sa = calculateScore(rdmol)
-    sa_norm = round((10 - sa) / 9, 2)
-    return sa_norm
+    # sa_norm = round((10 - sa) / 9, 2)  #0~1 사이의 값으로 정규화
+    # return sa_norm
+    return sa

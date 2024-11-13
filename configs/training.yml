@@ -1,7 +1,7 @@
 data:
-  name: pl
-  path: ./data/crossdocked_v1.1_rmsd1.0_pocket10
-  split: ./data/crossdocked_pocket10_pose_split.pt
+  name: finetune  # ['pl', 'pdbbind', 'finetune']
+  path: data/output_ligand_protein_7l11_pocket10.lmdb #data/output_ligand_protein_7uup_B_4WI_pocket10.lmdb  # data/output_ligand_protein.lmdb  # ./data/crossdocked_v1.1_rmsd1.0_pocket10
+  # split: ./data/crossdocked_pocket10_pose_split.pt
   transform:
     ligand_atom_mode: add_aromatic
     random_rot: False
@@ -16,6 +16,8 @@ model:
   num_diffusion_timesteps: 1000
   loss_v_weight: 100.
   sample_time_method: symmetric  # ['importance', 'symmetric']
+
+  pretrained_weights: pretrained_models/pretrained_diffusion.pt  # pretrained model weights load
 
   time_emb_dim: 0
   time_emb_mode: simple
@@ -43,10 +45,10 @@ model:
 
 train:
   seed: 2021
-  batch_size: 4
+  batch_size: 16
   num_workers: 4
   n_acc_batch: 1
-  max_iters: 10000000
+  max_iters: 1000000  #10000000 (default value)
   val_freq: 100
   pos_noise_std: 0.1
   max_grad_norm: 8.0

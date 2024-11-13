@@ -150,17 +150,21 @@ class PDBProtein(object):
 
     def to_dict_atom(self):
         return {
-            'element': np.array(self.element, dtype=np.long),
+            # 'element': np.array(self.element, dtype=np.long),
+            'element': np.array(self.element, dtype=np.int64),
             'molecule_name': self.title,
             'pos': np.array(self.pos, dtype=np.float32),
-            'is_backbone': np.array(self.is_backbone, dtype=np.bool),
+            # 'is_backbone': np.array(self.is_backbone, dtype=np.bool),
+            'is_backbone': np.array(self.is_backbone, dtype=bool),
             'atom_name': self.atom_name,
-            'atom_to_aa_type': np.array(self.atom_to_aa_type, dtype=np.long)
+            # 'atom_to_aa_type': np.array(self.atom_to_aa_type, dtype=np.long)
+            'atom_to_aa_type': np.array(self.atom_to_aa_type, dtype=np.int64)
         }
 
     def to_dict_residue(self):
         return {
-            'amino_acid': np.array(self.amino_acid, dtype=np.long),
+            # 'amino_acid': np.array(self.amino_acid, dtype=np.long),
+            'amino_acid': np.array(self.amino_acid, dtype=np.int),
             'center_of_mass': np.array(self.center_of_mass, dtype=np.float32),
             'pos_CA': np.array(self.pos_CA, dtype=np.float32),
             'pos_C': np.array(self.pos_C, dtype=np.float32),
@@ -198,6 +202,35 @@ class PDBProtein(object):
                 block += self.atoms[atom_idx]['line'] + "\n"
         block += "END\n"
         return block
+
+    #######################################################################
+    def get_ligand_mol(self, ligand_resname=None):
+        """
+        PDB 파일에서 리간드 분자를 추출하여 RDKit Mol 객체로 반환합니다.
+        - ligand_resname: 추출할 리간드의 Residue Name (예: 'LIG'). 지정하지 않으면 모든 HETATM 레코드를 추출합니다.
+        """
+        ligand_lines = []
+        for line in self.block.splitlines():
+            record_type = line[0:6].strip()
+            if record_type == 'HETATM':
+                res_name = line[17:20].strip()
+                if ligand_resname is None or res_name == ligand_resname:
+                    ligand_lines.append(line)
+            elif record_type == 'ATOM':
+                continue  # 단백질 원자는 무시
+            elif record_type == 'ENDMDL':
+                break  # 첫 번째 모델만 사용
+
+        if not ligand_lines:
+            return None  # 리간드가 없음
+
+        ligand_block = "\n".join(ligand_lines)
+        # RDKit Mol 객체로 변환
+        ligand_mol = Chem.MolFromPDBBlock(ligand_block, sanitize=False)
+        if ligand_mol is not None:
+            Chem.SanitizeMol(ligand_mol)
+        return ligand_mol
+    #######################################################################
 
 
 def parse_pdbbind_index_file(path):
@@ -253,7 +286,8 @@ def parse_sdf_file(path):
         accum_pos += pos[atom_idx] * atom_weight
         accum_mass += atom_weight
     center_of_mass = accum_pos / accum_mass
-    element = np.array(element, dtype=np.int)
+    # element = np.array(element, dtype=np.int)
+    element = np.array(element, dtype=np.int64)
 
     # in edge_type, we have 1 for single bond, 2 for double bond, 3 for triple bond, and 4 for aromatic bond.
     row, col, edge_type = [], [], []
@@ -264,8 +298,10 @@ def parse_sdf_file(path):
         col += [end, start]
         edge_type += 2 * [BOND_TYPES[bond.GetBondType()]]
 
-    edge_index = np.array([row, col], dtype=np.long)
-    edge_type = np.array(edge_type, dtype=np.long)
+    # edge_index = np.array([row, col], dtype=np.long)
+    edge_index = np.array([row, col], dtype=np.int64)
+    # edge_type = np.array(edge_type, dtype=np.long)
+    edge_type = np.array(edge_type, dtype=np.int64)
 
     perm = (edge_index[0] * rd_num_atoms + edge_index[1]).argsort()
     edge_index = edge_index[:, perm]

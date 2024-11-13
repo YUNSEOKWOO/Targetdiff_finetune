@@ -90,6 +90,7 @@ if __name__ == '__main__':
         'pred_ligand_pos_traj': pred_pos_traj,
         'pred_ligand_v_traj': pred_v_traj
     }
+    # print('pred_ligand', result)
     logger.info('Sample done!')
 
     # reconstruction

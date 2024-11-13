@@ -66,6 +66,7 @@ if __name__ == '__main__':
     all_pair_dist, all_bond_dist = [], []
     all_atom_types = Counter()
     success_pair_dist, success_atom_types = [], Counter()
+    
     for example_idx, r_name in enumerate(tqdm(results_fn_list, desc='Eval')):
         r = torch.load(r_name)  # ['data', 'pred_ligand_pos', 'pred_ligand_v', 'pred_ligand_pos_traj', 'pred_ligand_v_traj']
         all_pred_ligand_pos = r['pred_ligand_pos_traj']  # [num_samples, num_steps, num_atoms, 3]

@@ -77,14 +77,22 @@ if __name__ == '__main__':
 
     # Datasets and loaders
     logger.info('Loading dataset...')
-    dataset, subsets = get_dataset(
+    result = get_dataset(
         config=config.data,
         transform=transform
     )
-    train_set, val_set = subsets['train'], subsets['test']
-    logger.info(f'Training: {len(train_set)} Validation: {len(val_set)}')
 
-    # follow_batch = ['protein_element', 'ligand_element']
+    if isinstance(result, tuple):
+        dataset, subsets = result
+        train_set, val_set = subsets['train'], subsets['test']
+        logger.info(f'Training: {len(train_set)} Validation: {len(val_set)}')
+    else:
+        dataset = result
+        train_set = dataset
+        val_set = None  # 검증 데이터셋이 없는 경우 None으로 설정
+        logger.info(f'Training set size: {len(train_set)}')
+
+    # DataLoader 설정
     collate_exclude_keys = ['ligand_nbh_list']
     train_iterator = utils_train.inf_iterator(DataLoader(
         train_set,
@@ -94,8 +102,38 @@ if __name__ == '__main__':
         follow_batch=FOLLOW_BATCH,
         exclude_keys=collate_exclude_keys
     ))
-    val_loader = DataLoader(val_set, config.train.batch_size, shuffle=False,
-                            follow_batch=FOLLOW_BATCH, exclude_keys=collate_exclude_keys)
+
+    if val_set is not None:
+        val_loader = DataLoader(
+            val_set,
+            batch_size=config.train.batch_size,
+            shuffle=False,
+            follow_batch=FOLLOW_BATCH,
+            exclude_keys=collate_exclude_keys
+        )
+    else:
+        val_loader = None
+    # # Datasets and loaders
+    # logger.info('Loading dataset...')
+    # dataset, subsets = get_dataset(
+    #     config=config.data,
+    #     transform=transform
+    # )
+    # train_set, val_set = subsets['train'], subsets['test']
+    # logger.info(f'Training: {len(train_set)} Validation: {len(val_set)}')
+
+    # # follow_batch = ['protein_element', 'ligand_element']
+    # collate_exclude_keys = ['ligand_nbh_list']
+    # train_iterator = utils_train.inf_iterator(DataLoader(
+    #     train_set,
+    #     batch_size=config.train.batch_size,
+    #     shuffle=True,
+    #     num_workers=config.train.num_workers,
+    #     follow_batch=FOLLOW_BATCH,
+    #     exclude_keys=collate_exclude_keys
+    # ))
+    # val_loader = DataLoader(val_set, config.train.batch_size, shuffle=False,
+    #                         follow_batch=FOLLOW_BATCH, exclude_keys=collate_exclude_keys)
 
     # Model
     logger.info('Building model...')
@@ -105,6 +143,22 @@ if __name__ == '__main__':
         ligand_atom_feature_dim=ligand_featurizer.feature_dim
     ).to(args.device)
     # print(model)
+
+    # *** Added: Load pretrained weights if specified ***
+    pretrained_weights = getattr(config.model, 'pretrained_weights', None)
+    if pretrained_weights is not None:
+        if os.path.isfile(pretrained_weights):
+            logger.info(f"Loading pretrained weights from {pretrained_weights}")
+            checkpoint = torch.load(pretrained_weights, map_location=args.device)
+            if 'model' in checkpoint:
+                model.load_state_dict(checkpoint['model'], strict=False)
+            else:
+                model.load_state_dict(checkpoint, strict=False)
+            logger.info("Pretrained weights loaded successfully.")
+        else:
+            logger.warning(f"Pretrained weights file {pretrained_weights} not found. Skipping loading.")
+    # *** End of added code ***
+
     print(f'protein feature dim: {protein_featurizer.feature_dim} ligand feature dim: {ligand_featurizer.feature_dim}')
     logger.info(f'# trainable parameters: {misc.count_parameters(model) / 1e6:.4f} M')
 
@@ -151,6 +205,11 @@ if __name__ == '__main__':
 
 
     def validate(it):
+        ##########################for finetuning##########################
+        if val_loader is None:    
+            logger.info('No validation dataset. Skipping validation.')
+            return
+        ##################################################################        
         # fix time steps
         sum_loss, sum_loss_pos, sum_loss_v, sum_n = 0, 0, 0, 0
         sum_loss_bond, sum_loss_non_bond = 0, 0
@@ -214,11 +273,25 @@ if __name__ == '__main__':
             # with torch.autograd.detect_anomaly():
             train(it)
             if it % config.train.val_freq == 0 or it == config.train.max_iters:
-                val_loss = validate(it)
-                if best_loss is None or val_loss < best_loss:
-                    logger.info(f'[Validate] Best val loss achieved: {val_loss:.6f}')
-                    best_loss, best_iter = val_loss, it
-                    ckpt_path = os.path.join(ckpt_dir, '%d.pt' % it)
+                if val_loader is not None:  ##########################for finetuning##########################
+                    val_loss = validate(it)
+                    if best_loss is None or val_loss < best_loss:
+                        logger.info(f'[Validate] Best val loss achieved: {val_loss:.6f}')
+                        best_loss, best_iter = val_loss, it
+                        ckpt_path = os.path.join(ckpt_dir, '%d.pt' % it)
+                        torch.save({
+                            'config': config,
+                            'model': model.state_dict(),
+                            'optimizer': optimizer.state_dict(),
+                            'scheduler': scheduler.state_dict(),
+                            'iteration': it,
+                        }, ckpt_path)
+                    else:
+                        logger.info(f'[Validate] Val loss is not improved. '
+                                    f'Best val loss: {best_loss:.6f} at iter {best_iter}')
+                else:
+                    # 검증 데이터셋이 없을 경우, 주기마다 모델을 저장
+                    ckpt_path = os.path.join(ckpt_dir, f'model_iter_{it}.pt')
                     torch.save({
                         'config': config,
                         'model': model.state_dict(),
@@ -226,8 +299,18 @@ if __name__ == '__main__':
                         'scheduler': scheduler.state_dict(),
                         'iteration': it,
                     }, ckpt_path)
-                else:
-                    logger.info(f'[Validate] Val loss is not improved. '
-                                f'Best val loss: {best_loss:.6f} at iter {best_iter}')
+                    logger.info(f'[Save] Model saved at iteration {it} to {ckpt_path}')
     except KeyboardInterrupt:
         logger.info('Terminating...')
+    #################################################################
+    finally:
+        # 학습이 완료되었거나 중단되었을 때, 최종 모델 저장
+        final_ckpt_path = os.path.join(ckpt_dir, 'final_model.pt')
+        torch.save({
+            'config': config,
+            'model': model.state_dict(),
+            'optimizer': optimizer.state_dict(),
+            'scheduler': scheduler.state_dict(),
+            'iteration': it,
+        }, final_ckpt_path)
+        logger.info(f'[Save] Final model saved at iteration {it} to {final_ckpt_path}')
